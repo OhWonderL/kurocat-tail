@@ -1,3 +1,4 @@
+import { DaFeiYuRenderer } from '../../src/dafeiyuRenderer';
 import { KuroCatEngine, type KeyboardOrientation } from '../../src/catEngine';
 import { catAudio } from '../../src/audio';
 import type { KeyboardLayoutId } from '../../src/keyboardLayout';
@@ -209,7 +210,7 @@ function initPlayground(): void {
   const viewport = document.getElementById('canvas-viewport') as HTMLDivElement | null;
   if (!canvas || !viewport) return;
 
-  const engine = new KuroCatEngine(canvas, { embedded: true });
+  const engine = new KuroCatEngine(canvas, { embedded: true, dafeiyu: new DaFeiYuRenderer() });
   let currentLayout: KeyboardLayoutId = '65';
   let currentOrient: KeyboardOrientation = 'cat';
   let currentSkinId = 'black';

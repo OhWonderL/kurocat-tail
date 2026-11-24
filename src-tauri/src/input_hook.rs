@@ -390,6 +390,9 @@ pub fn start_global_hooks(app: AppHandle) {
                     }
                 }
                 RawHookMsg::MouseDown(btn) => {
+                    if PASSWORD_PRIVACY_ACTIVE.load(Ordering::Relaxed) {
+                        continue;
+                    }
                     let _ = app.emit(
                         "kuro-input",
                         InputEvent::MouseDown {
@@ -398,6 +401,9 @@ pub fn start_global_hooks(app: AppHandle) {
                     );
                 }
                 RawHookMsg::MouseUp(btn) => {
+                    if PASSWORD_PRIVACY_ACTIVE.load(Ordering::Relaxed) {
+                        continue;
+                    }
                     let _ = app.emit(
                         "kuro-input",
                         InputEvent::MouseUp {
@@ -406,9 +412,15 @@ pub fn start_global_hooks(app: AppHandle) {
                     );
                 }
                 RawHookMsg::MouseWheel(delta) => {
+                    if PASSWORD_PRIVACY_ACTIVE.load(Ordering::Relaxed) {
+                        continue;
+                    }
                     let _ = app.emit("kuro-input", InputEvent::MouseWheel { delta });
                 }
                 RawHookMsg::MouseMove { x, y } => {
+                    if PASSWORD_PRIVACY_ACTIVE.load(Ordering::Relaxed) {
+                        continue;
+                    }
                     let now = Instant::now();
                     if now.duration_since(last_mouse_emit) >= Duration::from_millis(16) {
                         last_mouse_emit = now;

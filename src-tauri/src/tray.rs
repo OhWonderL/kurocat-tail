@@ -1,6 +1,6 @@
 use crate::config::AppSettings;
 use crate::{
-    apply_breed_and_save, apply_keyboard_layout_and_save, apply_keyboard_orientation_and_save,
+    apply_keyboard_layout_and_save, apply_keyboard_orientation_and_save,
     apply_scale_and_save, is_pet_visible, reset_window_position, set_pet_always_on_top,
     set_pet_visible, shutdown_pet_windows, AppState,
 };
@@ -13,10 +13,10 @@ fn default_tray_tooltip() -> &'static str {
     #[cfg(windows)]
     {
         if crate::win_is_elevated() {
-            return "KuroCat（管理员 · 游戏模式就绪）";
+            return "KuroCat Tail（管理员 · 游戏模式就绪）";
         }
     }
-    "KuroCat"
+    "KuroCat Tail"
 }
 
 pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
@@ -87,36 +87,6 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
         initial.autostart,
         None::<&str>,
     )?;
-    let mcp_toggle = CheckMenuItem::with_id(
-        app,
-        "mcp_toggle",
-        "开启 MCP 扩展服务",
-        true,
-        initial.mcp_enabled,
-        None::<&str>,
-    )?;
-
-    let breed_black = MenuItem::with_id(app, "breed_black", "经典小黑猫", true, None::<&str>)?;
-    let breed_ragdoll = MenuItem::with_id(app, "breed_ragdoll", "暖奶茶布偶猫", true, None::<&str>)?;
-    let breed_orange = MenuItem::with_id(app, "breed_orange", "大橘猫（虎斑）", true, None::<&str>)?;
-    let breed_calico = MenuItem::with_id(app, "breed_calico", "三花猫", true, None::<&str>)?;
-    let breed_tuxedo = MenuItem::with_id(app, "breed_tuxedo", "奶牛猫", true, None::<&str>)?;
-    let breed_siamese = MenuItem::with_id(app, "breed_siamese", "暹罗猫", true, None::<&str>)?;
-    let breed_dafeiyu = MenuItem::with_id(app, "breed_dafeiyu", "🐳 大肥鱼（鲸鱼娘）", true, None::<&str>)?;
-    let breed_menu = Submenu::with_items(
-        app,
-        "角色外观",
-        true,
-        &[
-            &breed_black,
-            &breed_ragdoll,
-            &breed_orange,
-            &breed_calico,
-            &breed_tuxedo,
-            &breed_siamese,
-            &breed_dafeiyu,
-        ],
-    )?;
 
     let scale_25 = MenuItem::with_id(app, "scale_25", "25%（迷你）", true, None::<&str>)?;
     let scale_50 = MenuItem::with_id(app, "scale_50", "50%（小巧）", true, None::<&str>)?;
@@ -146,7 +116,7 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
     let reset_pos = MenuItem::with_id(app, "reset_pos", "重置位置到右下角", true, None::<&str>)?;
     #[cfg(windows)]
     let desktop_shortcut =
-        MenuItem::with_id(app, "desktop_shortcut", "创建桌面快捷方式 (KuroCat)", true, None::<&str>)?;
+        MenuItem::with_id(app, "desktop_shortcut", "创建桌面快捷方式 (KuroCat Tail)", true, None::<&str>)?;
     #[cfg(target_os = "macos")]
     let mac_input_menu = {
         let mac_reconnect = MenuItem::with_id(
@@ -191,14 +161,7 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
             ],
         )?
     };
-    let check_update = MenuItem::with_id(
-        app,
-        "check_update",
-        format!("检查更新 (v{})", crate::updater::CURRENT_VERSION),
-        true,
-        None::<&str>,
-    )?;
-    let quit = MenuItem::with_id(app, "quit", "退出 KuroCat", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "退出 KuroCat Tail", true, None::<&str>)?;
 
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
@@ -216,14 +179,11 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
             &key_bubbles,
             &sound_toggle,
             &always_on_top,
-            &breed_menu,
             &kb_menu,
             &scale_menu,
             &desktop_shortcut,
             &reset_pos,
             &autostart,
-            &mcp_toggle,
-            &check_update,
             &sep2,
             &quit,
         ],
@@ -241,14 +201,11 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
             &key_bubbles,
             &sound_toggle,
             &always_on_top,
-            &breed_menu,
             &kb_menu,
             &scale_menu,
             &mac_input_menu,
             &reset_pos,
             &autostart,
-            &mcp_toggle,
-            &check_update,
             &sep2,
             &quit,
         ],
@@ -266,13 +223,10 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
             &key_bubbles,
             &sound_toggle,
             &always_on_top,
-            &breed_menu,
             &kb_menu,
             &scale_menu,
             &reset_pos,
             &autostart,
-            &mcp_toggle,
-            &check_update,
             &sep2,
             &quit,
         ],
@@ -336,10 +290,11 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                         .paused_guard
                         .store(next, std::sync::atomic::Ordering::SeqCst);
                     crate::input_hook::set_hooks_paused(next);
+                    let _ = app.emit("kuro-input-reset", ());
                     let _ = pause_guard.set_checked(next);
                     if let Some(tray) = app.tray_by_id("kuro-tray") {
                         let tip = if next {
-                            "KuroCat（已暂停监听 · 反作弊护航中）"
+                            "KuroCat Tail（已暂停监听 · 反作弊护航中）"
                         } else {
                             default_tray_tooltip()
                         };
@@ -407,24 +362,6 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                         let _ = app.emit("kuro-settings", s.clone());
                     }
                 }
-                "mcp_toggle" => {
-                    let mut s = state.settings.lock().unwrap();
-                    s.mcp_enabled = !s.mcp_enabled;
-                    let enabled = s.mcp_enabled;
-                    state
-                        .mcp_enabled
-                        .store(enabled, std::sync::atomic::Ordering::Relaxed);
-                    crate::config::save_settings(&s);
-                    let _ = mcp_toggle.set_checked(enabled);
-                    let _ = app.emit("kuro-settings", s.clone());
-                }
-                "breed_black" => apply_breed_and_save(app, "black"),
-                "breed_ragdoll" => apply_breed_and_save(app, "ragdoll"),
-                "breed_orange" => apply_breed_and_save(app, "orange-tabby"),
-                "breed_calico" => apply_breed_and_save(app, "calico"),
-                "breed_tuxedo" => apply_breed_and_save(app, "tuxedo"),
-                "breed_siamese" => apply_breed_and_save(app, "siamese"),
-                "breed_dafeiyu" => apply_breed_and_save(app, "dafeiyu"),
                 "scale_25" => apply_scale_and_save(app, 0.25),
                 "scale_50" => apply_scale_and_save(app, 0.5),
                 "scale_75" => apply_scale_and_save(app, 0.75),
@@ -453,45 +390,6 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                 #[cfg(target_os = "macos")]
                 "mac_open_accessibility" => {
                     crate::input_hook::macos_hook::open_macos_privacy_pane("accessibility");
-                }
-                "check_update" => {
-                    let app_clone = app.clone();
-                    set_pet_visible(app, true);
-                    let _ = app_clone.emit(
-                        "kuro-update-status",
-                        crate::updater::UpdateProgressEvent {
-                            stage: "checking".to_string(),
-                            message: "正在检查新版本...".to_string(),
-                            info: None,
-                        },
-                    );
-                    std::thread::spawn(move || match crate::updater::check_latest_update() {
-                        Ok(info) => {
-                            let (stage, msg) = if info.has_update {
-                                ("available", format!("发现新版本 v{}", info.latest_version))
-                            } else {
-                                ("up_to_date", format!("已是最新版本 v{}", info.current_version))
-                            };
-                            let _ = app_clone.emit(
-                                "kuro-update-status",
-                                crate::updater::UpdateProgressEvent {
-                                    stage: stage.to_string(),
-                                    message: msg,
-                                    info: Some(info),
-                                },
-                            );
-                        }
-                        Err(err) => {
-                            let _ = app_clone.emit(
-                                "kuro-update-status",
-                                crate::updater::UpdateProgressEvent {
-                                    stage: "error".to_string(),
-                                    message: err,
-                                    info: None,
-                                },
-                            );
-                        }
-                    });
                 }
                 "reset_pos" => reset_window_position(app),
                 "quit" => {

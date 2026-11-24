@@ -2,20 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-fn default_cat_breed() -> String {
-    "black".to_string()
-}
-
-fn default_mcp_enabled() -> bool {
-    true
-}
-
 fn default_privacy_password_guard() -> bool {
     true
-}
-
-fn default_mcp_port() -> u16 {
-    27420
 }
 
 pub fn default_keyboard_layout() -> String {
@@ -57,12 +45,6 @@ pub struct AppSettings {
     pub show_key_bubbles: bool,
     pub sound_enabled: bool,
     pub autostart: bool,
-    #[serde(default = "default_cat_breed")]
-    pub cat_breed: String,
-    #[serde(default = "default_mcp_enabled")]
-    pub mcp_enabled: bool,
-    #[serde(default = "default_mcp_port")]
-    pub mcp_port: u16,
     #[serde(default = "default_keyboard_layout")]
     pub keyboard_layout: String,
     #[serde(default = "default_keyboard_orientation")]
@@ -82,9 +64,6 @@ impl Default for AppSettings {
             show_key_bubbles: true,
             sound_enabled: true,
             autostart: false,
-            cat_breed: default_cat_breed(),
-            mcp_enabled: default_mcp_enabled(),
-            mcp_port: default_mcp_port(),
             keyboard_layout: default_keyboard_layout(),
             keyboard_orientation: default_keyboard_orientation(),
             privacy_password_guard: default_privacy_password_guard(),
@@ -98,7 +77,7 @@ pub fn app_data_dir() -> PathBuf {
         let base = std::env::var("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("."));
-        base.join("kuro-cat-pet")
+        base.join("kuro-cat-tail")
     }
     #[cfg(target_os = "macos")]
     {
@@ -107,14 +86,14 @@ pub fn app_data_dir() -> PathBuf {
             .unwrap_or_else(|_| PathBuf::from("."));
         home.join("Library")
             .join("Application Support")
-            .join("kuro-cat-pet")
+            .join("kuro-cat-tail")
     }
     #[cfg(all(not(windows), not(target_os = "macos")))]
     {
         let home = std::env::var("HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("."));
-        home.join(".config").join("kuro-cat-pet")
+        home.join(".config").join("kuro-cat-tail")
     }
 }
 
@@ -160,8 +139,7 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
     }
 
     let subkey = to_wide("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
-    let value_name = to_wide("KuroCat");
-    let legacy_value_name = to_wide("KuroCatPet");
+    let value_name = to_wide("KuroCat Tail");
 
     unsafe {
         let mut hkey: HKEY = std::ptr::null_mut();
@@ -176,8 +154,6 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
             return Err(format!("RegOpenKeyExW failed with code {}", status));
         }
 
-        // Clean up legacy autostart key so users upgrading from <=v4.2 never run two copies
-        let _ = RegDeleteValueW(hkey, legacy_value_name.as_ptr());
 
         let result = if enabled {
             let exe = std::env::current_exe()
@@ -214,7 +190,7 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
 pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
     let home = std::env::var("HOME").map_err(|e| e.to_string())?;
     let agents_dir = PathBuf::from(home).join("Library").join("LaunchAgents");
-    let plist_path = agents_dir.join("com.kurocat.pet.plist");
+    let plist_path = agents_dir.join("com.kurocat.tail.plist");
 
     if enabled {
         fs::create_dir_all(&agents_dir).map_err(|e| e.to_string())?;
@@ -228,7 +204,7 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.kurocat.pet</string>
+    <string>com.kurocat.tail</string>
     <key>ProgramArguments</key>
     <array>
         <string>{}</string>
@@ -260,7 +236,7 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
             PathBuf::from(home).join(".config")
         });
     let autostart_dir = config_root.join("autostart");
-    let desktop_path = autostart_dir.join("kurocat.desktop");
+    let desktop_path = autostart_dir.join("kurocat-tail.desktop");
 
     if enabled {
         fs::create_dir_all(&autostart_dir).map_err(|e| e.to_string())?;
@@ -271,10 +247,10 @@ pub fn set_windows_autostart(enabled: bool) -> Result<(), String> {
         let entry = format!(
             "[Desktop Entry]\n\
              Type=Application\n\
-             Name=KuroCat\n\
+             Name=KuroCat Tail\n\
              Comment=Minimalist desktop cat typing & mouse companion\n\
              Exec=\"{exe}\"\n\
-             Icon=KuroCat\n\
+             Icon=KuroCat Tail\n\
              Terminal=false\n\
              X-GNOME-Autostart-enabled=true\n",
             exe = exe.replace('"', "\\\"")
@@ -304,13 +280,13 @@ pub fn create_desktop_shortcut() -> Result<String, String> {
 
     let script = format!(
         "$desktop = [Environment]::GetFolderPath('Desktop'); \
-         $lnk = Join-Path $desktop 'KuroCat.lnk'; \
+         $lnk = Join-Path $desktop 'KuroCat Tail.lnk'; \
          $ws = New-Object -ComObject WScript.Shell; \
          $s = $ws.CreateShortcut($lnk); \
          $s.TargetPath = '{exe}'; \
          $s.WorkingDirectory = '{wd}'; \
          $s.IconLocation = '{exe},0'; \
-         $s.Description = 'KuroCat Desktop Companion'; \
+         $s.Description = 'KuroCat Tail Desktop Companion'; \
          $s.Save(); \
          Write-Output $lnk",
         exe = exe_str,

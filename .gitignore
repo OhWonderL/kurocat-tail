@@ -9,3 +9,7 @@ src-tauri/target-win7/
 .DS_Store
 Thumbs.db
 __pycache__/
+
+.toolchain/
+
+/安装地点测试/

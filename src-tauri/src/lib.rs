@@ -1,19 +1,15 @@
 #![recursion_limit = "256"]
 
-mod cats;
 mod config;
 mod input_hook;
-mod mcp;
 mod privacy;
 mod tray;
-mod updater;
 #[cfg(windows)]
 mod win7_layered;
 
 #[cfg(windows)]
 const WIN7_OFFSCREEN_PARK_POS: i32 = -16000;
 
-use cats::{all_cats, cat_exists, cats_path, sanitize_cat_id, CatSkinConfig};
 use config::{
     config_path, load_settings, normalize_keyboard_layout, normalize_keyboard_orientation,
     save_settings, set_windows_autostart, AppSettings,
@@ -167,15 +163,10 @@ pub fn shutdown_pet_windows() {
     }
 }
 
-pub fn run_mcp_stdio() {
-    mcp::run_stdio_mcp();
-}
-
 pub struct AppState {
     pub settings: Arc<Mutex<AppSettings>>,
     pub menu_open: Arc<AtomicBool>,
     pub dragging: Arc<AtomicBool>,
-    pub mcp_enabled: Arc<AtomicBool>,
     pub update_banner_open: Arc<AtomicBool>,
     pub paused_guard: Arc<AtomicBool>,
 }
@@ -196,40 +187,8 @@ fn get_settings(state: State<'_, AppState>) -> AppSettings {
 }
 
 #[tauri::command]
-fn get_cats() -> Vec<CatSkinConfig> {
-    all_cats()
-}
-
-#[tauri::command]
-fn get_mcp_config(state: State<'_, AppState>) -> String {
-    let port = state.settings.lock().unwrap().mcp_port;
-    let exe = std::env::current_exe()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "KuroCat.exe".to_string());
-    serde_json::to_string_pretty(&serde_json::json!({
-        "mcpServers": {
-            "kurocat": {
-                "command": exe,
-                "args": ["--mcp"],
-                "url": format!("http://127.0.0.1:{}/mcp", port)
-            }
-        }
-    }))
-    .unwrap_or_default()
-}
-
-#[tauri::command]
 fn update_settings(app: AppHandle, state: State<'_, AppState>, mut patch: AppSettings) -> AppSettings {
     patch.scale = patch.scale.clamp(0.20, 1.50);
-    let clean_breed = sanitize_cat_id(&patch.cat_breed);
-    patch.cat_breed = if cat_exists(&clean_breed) {
-        clean_breed
-    } else {
-        "black".to_string()
-    };
-    if patch.mcp_port == 0 {
-        patch.mcp_port = 27420;
-    }
     patch.keyboard_layout = normalize_keyboard_layout(&patch.keyboard_layout);
     patch.keyboard_orientation = normalize_keyboard_orientation(&patch.keyboard_orientation);
 
@@ -240,8 +199,6 @@ fn update_settings(app: AppHandle, state: State<'_, AppState>, mut patch: AppSet
     if patch.autostart != prev_autostart {
         let _ = set_windows_autostart(patch.autostart);
     }
-
-    state.mcp_enabled.store(patch.mcp_enabled, Ordering::Relaxed);
 
     let size_changed = (patch.scale - prev_scale).abs() > 0.005 || patch.keyboard_layout != prev_layout;
     set_pet_always_on_top(&app, patch.always_on_top);
@@ -278,30 +235,6 @@ fn set_dragging(state: State<'_, AppState>, dragging: bool) {
 #[tauri::command]
 fn set_update_banner_open(state: State<'_, AppState>, open: bool) {
     state.update_banner_open.store(open, Ordering::Relaxed);
-}
-
-#[tauri::command]
-fn get_app_version() -> String {
-    updater::CURRENT_VERSION.to_string()
-}
-
-#[tauri::command]
-async fn check_for_update() -> Result<updater::UpdateInfo, String> {
-    tauri::async_runtime::spawn_blocking(updater::check_latest_update)
-        .await
-        .map_err(|e| format!("检查更新任务异常: {}", e))?
-}
-
-#[tauri::command]
-async fn install_update(app: AppHandle, info: updater::UpdateInfo) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || updater::perform_update_install(&app, info))
-        .await
-        .map_err(|e| format!("安装更新任务异常: {}", e))?
-}
-
-#[tauri::command]
-fn open_release_page(url: String) {
-    updater::open_url_in_browser(&url);
 }
 
 #[tauri::command]
@@ -342,26 +275,8 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
-pub fn apply_breed_and_save(app: &AppHandle, breed: &str) {
-    let clean = sanitize_cat_id(breed);
-    let normalized = if cat_exists(&clean) {
-        clean
-    } else {
-        "black".to_string()
-    };
-    let state = app.state::<AppState>();
-    let updated = {
-        let mut s = state.settings.lock().unwrap();
-        s.cat_breed = normalized;
-        save_settings(&s);
-        s.clone()
-    };
-    let _ = app.emit("kuro-settings", updated);
-}
-
 pub fn reload_and_emit_all(app: &AppHandle) {
     let disk_settings = load_settings();
-    let cats = all_cats();
     let state = app.state::<AppState>();
 
     let (size_changed, top_changed) = {
@@ -372,9 +287,6 @@ pub fn reload_and_emit_all(app: &AppHandle) {
         *s = disk_settings.clone();
         (sc, tc)
     };
-    state
-        .mcp_enabled
-        .store(disk_settings.mcp_enabled, Ordering::Relaxed);
 
     if top_changed {
         set_pet_always_on_top(app, disk_settings.always_on_top);
@@ -389,7 +301,6 @@ pub fn reload_and_emit_all(app: &AppHandle) {
         }
     }
 
-    let _ = app.emit("kuro-cats", cats);
     let _ = app.emit("kuro-settings", disk_settings);
 }
 
@@ -399,17 +310,13 @@ fn file_mtime(path: &std::path::Path) -> Option<SystemTime> {
 
 fn start_storage_watcher(app: AppHandle) {
     std::thread::spawn(move || {
-        let c_path = cats_path();
         let s_path = config_path();
-        let mut last_cats_m = file_mtime(&c_path);
         let mut last_settings_m = file_mtime(&s_path);
 
         loop {
             std::thread::sleep(Duration::from_millis(400));
-            let cur_c = file_mtime(&c_path);
             let cur_s = file_mtime(&s_path);
-            if cur_c != last_cats_m || cur_s != last_settings_m {
-                last_cats_m = cur_c;
+            if cur_s != last_settings_m {
                 last_settings_m = cur_s;
                 reload_and_emit_all(&app);
             }
@@ -1505,14 +1412,12 @@ pub fn run() {
     let settings_arc = Arc::new(Mutex::new(initial_settings.clone()));
     let menu_open = Arc::new(AtomicBool::new(false));
     let dragging = Arc::new(AtomicBool::new(false));
-    let mcp_enabled = Arc::new(AtomicBool::new(initial_settings.mcp_enabled));
     let update_banner_open = Arc::new(AtomicBool::new(false));
     let paused_guard = Arc::new(AtomicBool::new(false));
 
     let settings_for_setup = settings_arc.clone();
     let menu_for_setup = menu_open.clone();
     let drag_for_setup = dragging.clone();
-    let mcp_for_setup = mcp_enabled.clone();
     let banner_for_setup = update_banner_open.clone();
     let paused_for_setup = paused_guard.clone();
 
@@ -1521,7 +1426,6 @@ pub fn run() {
             settings: settings_arc,
             menu_open,
             dragging,
-            mcp_enabled,
             update_banner_open,
             paused_guard,
         })
@@ -1602,13 +1506,6 @@ pub fn run() {
                 paused_for_setup,
             );
             start_storage_watcher(handle.clone());
-            updater::start_background_update_checker(handle.clone());
-
-            let http_handle = handle.clone();
-            let mcp_port = if s.mcp_port == 0 { 27420 } else { s.mcp_port };
-            mcp::start_http_mcp_server(mcp_port, mcp_for_setup, move || {
-                reload_and_emit_all(&http_handle);
-            });
 
             if std::env::args().any(|a| a == "--demo") {
                 let demo_handle = handle.clone();
@@ -1645,9 +1542,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
-            get_cats,
-            get_mcp_config,
-            get_app_version,
             update_settings,
             set_menu_open,
             set_dragging,
@@ -1658,9 +1552,6 @@ pub fn run() {
             save_window_pos,
             reset_position,
             create_desktop_shortcut,
-            check_for_update,
-            install_update,
-            open_release_page,
             quit_app,
         ])
         .run(tauri::generate_context!())

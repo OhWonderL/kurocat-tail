@@ -88,11 +88,11 @@ export const KEYBOARD_KEYS_65: KeySpec[] = [
   { id: 'rshift', label: '⇧', bubble: '⇧', row: 3, uStart: 12.25, uWidth: 2.75, accent: 'orange', vkCodes: [0xa1] },
 
   // Row 4: Ctrl Win Alt Space Alt Left Down Up Right (rotates 180° to top row closest to cat!) (15U total)
-  { id: 'lctrl', label: 'Ctrl', bubble: 'Ctrl', row: 4, uStart: 0, uWidth: 1.25, accent: 'mod', vkCodes: [0xa2, 0x11] },
+  { id: 'lctrl', label: 'Ctrl', bubble: 'Ctrl', row: 4, uStart: 0, uWidth: 1.25, accent: 'mod', vkCodes: [0xa2, 0xa3, 0x11] },
   { id: 'lwin', label: 'Win', bubble: 'Win', row: 4, uStart: 1.25, uWidth: 1.25, accent: 'mod', vkCodes: [0x5b, 0x5c] },
   { id: 'lalt', label: 'Alt', bubble: 'Alt', row: 4, uStart: 2.5, uWidth: 1.25, accent: 'mod', vkCodes: [0xa4, 0x12] },
   { id: 'space', label: '␣', bubble: '␣', row: 4, uStart: 3.75, uWidth: 6.25, vkCodes: [0x20] },
-  { id: 'ralt', label: 'Alt', bubble: 'Alt', row: 4, uStart: 10, uWidth: 1, accent: 'mod', vkCodes: [0xa5, 0xa3] },
+  { id: 'ralt', label: 'Alt', bubble: 'Alt', row: 4, uStart: 10, uWidth: 1, accent: 'mod', vkCodes: [0xa5] },
   { id: 'left', label: '←', bubble: '←', row: 4, uStart: 11, uWidth: 1, accent: 'mod', vkCodes: [0x25, 0x23] },
   { id: 'down', label: '↓', bubble: '↓', row: 4, uStart: 12, uWidth: 1, accent: 'mod', vkCodes: [0x28, 0x22] },
   { id: 'up', label: '↑', bubble: '↑', row: 4, uStart: 13, uWidth: 1, accent: 'mod', vkCodes: [0x26, 0x21] },
